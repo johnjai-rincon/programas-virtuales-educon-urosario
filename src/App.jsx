@@ -2,12 +2,14 @@ import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from 'rea
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import { ProgressProvider } from './context/ProgressContext.jsx';
 import { CertificationProvider } from './context/CertificationContext.jsx';
+import { SupportProvider } from './context/SupportContext.jsx';
 import { ToastProvider } from './context/ToastContext.jsx';
 import Login from './views/Login.jsx';
 import Dashboard from './views/Dashboard.jsx';
 import CourseViewer from './views/CourseViewer.jsx';
 import FinalExam from './views/FinalExam.jsx';
 import Certificate from './views/Certificate.jsx';
+import HelpCenter from './views/HelpCenter.jsx';
 
 /** Protege las rutas del campus: sin sesión → /login. */
 function RequireAuth() {
@@ -25,9 +27,13 @@ export default function App() {
       <AuthProvider>
         <ProgressProvider>
           <CertificationProvider>
+            <SupportProvider>
             <ToastProvider>
               <Routes>
                 <Route path="/login" element={<Login />} />
+                {/* Centro de ayuda: público — accesible sin sesión para
+                    reportar problemas de acceso al campus. */}
+                <Route path="/ayuda" element={<HelpCenter />} />
                 <Route element={<RequireAuth />}>
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/curso/:slug" element={<CourseViewer />} />
@@ -37,6 +43,7 @@ export default function App() {
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </ToastProvider>
+            </SupportProvider>
           </CertificationProvider>
         </ProgressProvider>
       </AuthProvider>

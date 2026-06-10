@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { GraduationCap, LogOut } from 'lucide-react';
+import { GraduationCap, LifeBuoy, LogOut } from 'lucide-react';
 import Logo from './Logo.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -29,9 +29,24 @@ export default function Navbar() {
             <GraduationCap size={18} aria-hidden="true" />
             Mis programas
           </Link>
+          <Link
+            to="/ayuda"
+            className="flex items-center gap-2 rounded-ur-sm px-3 py-2 transition hover:bg-ur-gray-1 hover:text-ur-navy"
+          >
+            <LifeBuoy size={18} aria-hidden="true" />
+            Centro de ayuda
+          </Link>
         </nav>
 
         <div className="flex items-center gap-3">
+          {/* Acceso a ayuda siempre visible en móvil */}
+          <Link
+            to="/ayuda"
+            aria-label="Centro de ayuda"
+            className="rounded-ur-sm p-2 text-ur-gray-4 transition hover:bg-ur-gray-1 hover:text-ur-navy md:hidden"
+          >
+            <LifeBuoy size={20} aria-hidden="true" />
+          </Link>
           <div className="hidden text-right sm:block">
             <p className="max-w-[180px] truncate text-sm font-semibold text-ur-text">
               {user?.fullName}

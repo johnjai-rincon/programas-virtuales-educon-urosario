@@ -305,3 +305,62 @@ create policy "attempts_insert_own" on public.exam_attempts
 -- Certificados: lectura propia; la emisión solo vía issue_certificate()
 create policy "certificates_select_own" on public.certificates
   for select using (auth.uid() = user_id);
+
+-- =============================================================
+-- CENTRO DE AYUDA: CASOS DE SOPORTE
+-- Permite crear casos incluso SIN autenticación (problemas de
+-- acceso al campus son el motivo #1 de soporte), identificados
+-- por correo y con número de caso consultable.
+-- =============================================================
+
+create table if not exists public.support_tickets (
+  id uuid primary key default gen_random_uuid(),
+  ticket_no text not null unique,    -- número visible (ej. CASO-7F3A2B)
+  user_id uuid references public.profiles (id) on delete set null,  -- null si es anónimo
+  full_name text not null,
+  email text not null,
+  category text not null default 'acceso'
+    check (category in ('acceso', 'contenido', 'examenes', 'certificados', 'otro')),
+  subject text not null,
+  description text not null,
+  status text not null default 'abierto'
+    check (status in ('abierto', 'en_proceso', 'resuelto', 'cerrado')),
+  admin_notes text,                  -- respuesta del equipo de soporte
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_tickets_email on public.support_tickets (email, created_at desc);
+create index if not exists idx_tickets_status on public.support_tickets (status);
+
+drop trigger if exists trg_tickets_touch on public.support_tickets;
+create trigger trg_tickets_touch
+  before update on public.support_tickets
+  for each row execute function public.touch_updated_at();
+
+-- ── RLS de soporte ───────────────────────────────────────────
+alter table public.support_tickets enable row level security;
+
+-- Crear caso: permitido también para usuarios anónimos (clave del
+-- centro de ayuda — quien no puede iniciar sesión debe poder reportarlo).
+create policy "tickets_insert_anyone" on public.support_tickets
+  for insert with check (true);
+
+-- Lectura: el dueño autenticado ve los suyos; los administradores todo.
+create policy "tickets_select_own" on public.support_tickets
+  for select using (
+    auth.uid() = user_id
+    or exists (
+      select 1 from public.profiles p
+       where p.id = auth.uid() and p.role = 'admin'
+    )
+  );
+
+-- Gestión (cambio de estado y notas): solo administradores.
+create policy "tickets_update_admin" on public.support_tickets
+  for update using (
+    exists (
+      select 1 from public.profiles p
+       where p.id = auth.uid() and p.role = 'admin'
+    )
+  );

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff, Lock, LogIn, Mail, User } from 'lucide-react';
 import Logo from '../components/Logo.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -159,7 +159,16 @@ export default function Login() {
             </button>
           </form>
 
-          <p className="mt-6 text-center text-xs leading-relaxed text-ur-gray-3">
+          <p className="mt-5 text-center text-sm">
+            <Link
+              to="/ayuda"
+              className="font-semibold text-ur-navy underline-offset-2 transition hover:text-ur-red hover:underline"
+            >
+              ¿Problemas para ingresar? Visita el Centro de ayuda
+            </Link>
+          </p>
+
+          <p className="mt-4 text-center text-xs leading-relaxed text-ur-gray-3">
             Modo demostración: ingresa con cualquier correo y una contraseña de mínimo 6
             caracteres. La autenticación definitiva se conecta con Supabase Auth.
           </p>

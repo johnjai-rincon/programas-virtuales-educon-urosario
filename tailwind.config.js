@@ -1,6 +1,15 @@
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// Rutas absolutas (en formato POSIX) para que Tailwind encuentre las
+// clases sin importar desde qué carpeta se ejecute Vite (local, panel
+// de vista previa, CI o Lovable.dev).
+const root = dirname(fileURLToPath(import.meta.url));
+const abs = (p) => join(root, p).replace(/\\/g, '/');
+
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ['./index.html', './src/**/*.{js,jsx}'],
+  content: [abs('index.html'), abs('src/**/*.{js,jsx}')],
   theme: {
     extend: {
       colors: {

@@ -39,6 +39,11 @@ cualquier correo y una contraseña de 6+ caracteres.
   refleja en el dashboard: insignia "Certificado", nota de aprobación y contador.
 - **Descargas simuladas** — los recursos generan un archivo de demostración vía
   Blob y muestran una notificación toast.
+- **Centro de ayuda (`/ayuda`)** — ruta **pública** (un estudiante que no puede
+  iniciar sesión también debe poder reportarlo): FAQ con buscador, canales de
+  contacto y formulario para crear casos de soporte con número de seguimiento
+  (`CASO-XXXXXX`), categoría y estado (abierto / en proceso / resuelto). Accesible
+  desde el Navbar, el ícono de ayuda en móvil y un enlace en el Login.
 
 ## 🗂 Estructura
 
@@ -48,9 +53,10 @@ schema.sql                  # Esquema PostgreSQL para Supabase: tablas base + ex
 src/
   data/courses.js           # Catálogo real de los 16 programas (módulos y lecciones)
   data/exams.js             # Exámenes finales (5 preguntas por programa) y calificación
-  context/                  # Auth, Progress, Certification y Toast (estado global)
+  data/faqs.js              # Preguntas frecuentes y categorías de soporte
+  context/                  # Auth, Progress, Certification, Support y Toast
   components/               # Navbar, CourseCard, FilterBar, ModuleAccordion, VideoPlayer…
-  views/                    # Login, Dashboard, CourseViewer, FinalExam, Certificate
+  views/                    # Login, Dashboard, CourseViewer, FinalExam, Certificate, HelpCenter
   lib/supabase.js           # Cliente Supabase (se activa con variables de entorno)
 ```
 
