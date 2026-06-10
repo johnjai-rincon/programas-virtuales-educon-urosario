@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-ur-cream font-sans text-ur-text antialiased;
+  }
+  /* Accesibilidad: foco visible coherente con la marca */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ur-red ring-offset-2;
+  }
+}
+
+@layer utilities {
+  /* Scrollbar sutil para el índice del curso */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-ur-gray-2;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    @apply bg-ur-gray-3;
+  }
+}
