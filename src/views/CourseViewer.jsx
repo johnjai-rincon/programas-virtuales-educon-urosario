@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
+  Award,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Circle,
+  ClipboardCheck,
   Clock,
   ListChecks,
   X,
@@ -16,6 +18,7 @@ import VideoPlayer from '../components/VideoPlayer.jsx';
 import ResourceList from '../components/ResourceList.jsx';
 import ProgressBar from '../components/ProgressBar.jsx';
 import { useProgress } from '../context/ProgressContext.jsx';
+import { useCertification } from '../context/CertificationContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { getCourseBySlug, getCourseLessons } from '../data/courses.js';
 
@@ -30,6 +33,7 @@ export default function CourseViewer() {
   const { slug } = useParams();
   const course = getCourseBySlug(slug);
   const { isLessonCompleted, toggleLesson, courseStats } = useProgress();
+  const { getCertificate } = useCertification();
   const { toast } = useToast();
 
   const lessons = useMemo(() => (course ? getCourseLessons(course) : []), [course]);
@@ -195,6 +199,46 @@ export default function CourseViewer() {
               {stats.percent}%
             </span>
           </button>
+
+          {/* Banner de certificación al completar el 100% */}
+          {stats.percent === 100 && (
+            <div className="mb-6 overflow-hidden rounded-ur-md bg-gradient-to-r from-emerald-600 to-emerald-500 p-5 text-white shadow-ur-md sm:p-6">
+              <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-4">
+                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white/15">
+                    <Award size={24} aria-hidden="true" />
+                  </span>
+                  <div>
+                    <p className="text-base font-extrabold">
+                      {getCertificate(course.slug)
+                        ? '¡Programa certificado!'
+                        : '¡Completaste todas las lecciones!'}
+                    </p>
+                    <p className="text-sm text-white/85">
+                      {getCertificate(course.slug)
+                        ? `Certificado ${getCertificate(course.slug).code} emitido.`
+                        : 'Presenta el examen final para obtener tu certificado.'}
+                    </p>
+                  </div>
+                </div>
+                {getCertificate(course.slug) ? (
+                  <Link
+                    to={`/certificado/${course.slug}`}
+                    className="flex shrink-0 items-center gap-2 rounded-ur-sm bg-white px-5 py-2.5 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50"
+                  >
+                    <Award size={16} aria-hidden="true" /> Ver certificado
+                  </Link>
+                ) : (
+                  <Link
+                    to={`/curso/${course.slug}/examen`}
+                    className="flex shrink-0 items-center gap-2 rounded-ur-sm bg-white px-5 py-2.5 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50"
+                  >
+                    <ClipboardCheck size={16} aria-hidden="true" /> Presentar examen final
+                  </Link>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Encabezado de la lección */}
           <header className="mb-4">

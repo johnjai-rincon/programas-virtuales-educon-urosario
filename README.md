@@ -30,18 +30,27 @@ cualquier correo y una contraseña de 6+ caracteres.
   descargas de alto contraste.
 - **Progreso en vivo** — "Completar lección" recalcula al instante el porcentaje
   global del curso; al llegar al 100% se notifica la finalización.
+- **Examen final** — se desbloquea al completar el 100% de las lecciones. Banco de
+  5 preguntas reales por programa (stepper de una pregunta a la vez, indicadores de
+  avance, sin límite de intentos). Se aprueba con **80%** o más.
+- **Certificado** — al aprobar el examen se emite automáticamente un certificado
+  con código verificable (`UR-<código>-XXXXXX`), vista tipo diploma con marca
+  institucional y descarga a PDF (impresión en horizontal). El ciclo completo se
+  refleja en el dashboard: insignia "Certificado", nota de aprobación y contador.
 - **Descargas simuladas** — los recursos generan un archivo de demostración vía
   Blob y muestran una notificación toast.
 
 ## 🗂 Estructura
 
 ```
-schema.sql                  # Esquema PostgreSQL para Supabase (tablas, RLS, triggers, vista)
+schema.sql                  # Esquema PostgreSQL para Supabase: tablas base + exámenes,
+                            # intentos y certificados (RLS, triggers, RPC issue_certificate)
 src/
   data/courses.js           # Catálogo real de los 16 programas (módulos y lecciones)
-  context/                  # Auth, Progress y Toast (estado global)
+  data/exams.js             # Exámenes finales (5 preguntas por programa) y calificación
+  context/                  # Auth, Progress, Certification y Toast (estado global)
   components/               # Navbar, CourseCard, FilterBar, ModuleAccordion, VideoPlayer…
-  views/                    # Login, Dashboard, CourseViewer
+  views/                    # Login, Dashboard, CourseViewer, FinalExam, Certificate
   lib/supabase.js           # Cliente Supabase (se activa con variables de entorno)
 ```
 

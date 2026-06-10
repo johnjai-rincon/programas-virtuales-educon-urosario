@@ -168,3 +168,140 @@ create policy "progress_update_own" on public.user_progress
   for update using (auth.uid() = user_id);
 create policy "progress_delete_own" on public.user_progress
   for delete using (auth.uid() = user_id);
+
+-- =============================================================
+-- CERTIFICACIÓN: EXAMEN FINAL + CERTIFICADOS
+-- Flujo: 100% de lecciones → examen final aprobado (≥ pass_score)
+--        → emisión automática del certificado (RPC issue_certificate)
+-- =============================================================
+
+-- ── EXAM QUESTIONS ───────────────────────────────────────────
+-- Banco de preguntas del examen final de cada programa.
+create table if not exists public.exam_questions (
+  id uuid primary key default gen_random_uuid(),
+  course_id uuid not null references public.courses (id) on delete cascade,
+  question text not null,
+  options jsonb not null,            -- ["Opción A", "Opción B", ...]
+  correct_index integer not null,    -- índice (0-based) de la respuesta correcta
+  order_index integer not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_exam_questions_course
+  on public.exam_questions (course_id, order_index);
+
+-- ── EXAM ATTEMPTS ────────────────────────────────────────────
+create table if not exists public.exam_attempts (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  course_id uuid not null references public.courses (id) on delete cascade,
+  answers jsonb not null default '{}'::jsonb,  -- { "question_id": índice_elegido }
+  score numeric(5,2) not null,                 -- porcentaje 0-100
+  passed boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_exam_attempts_user_course
+  on public.exam_attempts (user_id, course_id, created_at desc);
+
+-- ── CERTIFICATES ─────────────────────────────────────────────
+create table if not exists public.certificates (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  course_id uuid not null references public.courses (id) on delete cascade,
+  code text not null unique,         -- código verificable (ej. UR-0GP0-7F3A2B)
+  score numeric(5,2) not null,       -- nota del examen con el que se emitió
+  issued_at timestamptz not null default now(),
+  unique (user_id, course_id)        -- un certificado por usuario y programa
+);
+
+create index if not exists idx_certificates_user on public.certificates (user_id);
+
+-- ── RPC: emitir certificado con validación en servidor ───────
+-- Verifica (1) 100% de lecciones completadas y (2) examen aprobado,
+-- y emite el certificado de forma atómica. Llamar tras aprobar:
+--   select issue_certificate('<course_id>');
+create or replace function public.issue_certificate(p_course_id uuid)
+returns public.certificates
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_user uuid := auth.uid();
+  v_total integer;
+  v_done integer;
+  v_best record;
+  v_cert public.certificates;
+  v_code text;
+begin
+  if v_user is null then
+    raise exception 'No autenticado';
+  end if;
+
+  -- ¿Ya existe? Devolverlo (idempotente).
+  select * into v_cert from certificates
+   where user_id = v_user and course_id = p_course_id;
+  if found then
+    return v_cert;
+  end if;
+
+  -- 1) Todas las lecciones completadas
+  select count(l.id),
+         count(l.id) filter (
+           where exists (
+             select 1 from user_progress up
+              where up.lesson_id = l.id and up.user_id = v_user and up.completed
+           )
+         )
+    into v_total, v_done
+    from lessons l
+    join modules m on m.id = l.module_id
+   where m.course_id = p_course_id;
+
+  if v_total = 0 or v_done < v_total then
+    raise exception 'El programa aún no está completado al 100%% (% de %)', v_done, v_total;
+  end if;
+
+  -- 2) Mejor intento aprobado del examen final
+  select * into v_best from exam_attempts
+   where user_id = v_user and course_id = p_course_id and passed
+   order by score desc, created_at asc
+   limit 1;
+
+  if not found then
+    raise exception 'El examen final no ha sido aprobado';
+  end if;
+
+  -- 3) Emitir con código verificable
+  select 'UR-' || coalesce(c.code, 'EDU') || '-' ||
+         upper(substr(md5(v_user::text || p_course_id::text || now()::text), 1, 6))
+    into v_code
+    from courses c where c.id = p_course_id;
+
+  insert into certificates (user_id, course_id, code, score)
+  values (v_user, p_course_id, v_code, v_best.score)
+  returning * into v_cert;
+
+  return v_cert;
+end;
+$$;
+
+-- ── RLS de certificación ─────────────────────────────────────
+alter table public.exam_questions enable row level security;
+alter table public.exam_attempts enable row level security;
+alter table public.certificates enable row level security;
+
+-- Preguntas: lectura autenticada (la respuesta correcta debería servirse
+-- vía RPC de calificación en producción; aquí se permite para el demo).
+create policy "exam_questions_read" on public.exam_questions
+  for select using (auth.role() = 'authenticated');
+
+-- Intentos: cada usuario gestiona los propios
+create policy "attempts_select_own" on public.exam_attempts
+  for select using (auth.uid() = user_id);
+create policy "attempts_insert_own" on public.exam_attempts
+  for insert with check (auth.uid() = user_id);
+
+-- Certificados: lectura propia; la emisión solo vía issue_certificate()
+create policy "certificates_select_own" on public.certificates
+  for select using (auth.uid() = user_id);

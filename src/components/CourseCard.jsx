@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
-import { BookOpen, Clock, PlayCircle, RotateCcw, Award } from 'lucide-react';
+import { Award, BookOpen, ClipboardCheck, Clock, PlayCircle } from 'lucide-react';
 import ProgressBar from './ProgressBar.jsx';
+import { useCertification } from '../context/CertificationContext.jsx';
 import { countLessons } from '../data/courses.js';
 
 const TYPE_LABEL = { curso: 'Curso virtual', diplomado: 'Diplomado virtual' };
@@ -8,11 +9,18 @@ const TYPE_LABEL = { curso: 'Curso virtual', diplomado: 'Diplomado virtual' };
 /** Tarjeta de programa para la grilla del dashboard (estilo marketplace). */
 export default function CourseCard({ course, stats }) {
   const { percent, completed, total } = stats;
+  const { getCertificate } = useCertification();
+
+  const certificate = getCertificate(course.slug);
   const started = percent > 0;
   const done = percent === 100;
 
-  const cta = done ? 'Repasar programa' : started ? 'Continuar' : 'Comenzar';
-  const CtaIcon = done ? RotateCcw : PlayCircle;
+  // CTA según el estado del ciclo: lecciones → examen → certificado
+  const cta = certificate
+    ? { to: `/certificado/${course.slug}`, label: 'Ver certificado', Icon: Award, style: 'border border-emerald-600 text-emerald-700 hover:bg-emerald-600 hover:text-white' }
+    : done
+      ? { to: `/curso/${course.slug}/examen`, label: 'Presentar examen final', Icon: ClipboardCheck, style: 'bg-ur-navy text-white hover:bg-ur-navy-light' }
+      : { to: `/curso/${course.slug}`, label: started ? 'Continuar' : 'Comenzar', Icon: PlayCircle, style: 'bg-ur-red text-white hover:bg-ur-red-dark' };
 
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-ur-md border border-ur-gray-2 bg-white shadow-ur-sm transition duration-300 hover:-translate-y-1 hover:shadow-ur-md">
@@ -27,11 +35,15 @@ export default function CourseCard({ course, stats }) {
         <span className="absolute left-3 top-3 rounded-full bg-ur-navy/90 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white">
           {TYPE_LABEL[course.type]}
         </span>
-        {done && (
+        {certificate ? (
           <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-bold text-white">
-            <Award size={12} aria-hidden="true" /> Completado
+            <Award size={12} aria-hidden="true" /> Certificado
           </span>
-        )}
+        ) : done ? (
+          <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-ur-navy px-3 py-1 text-[11px] font-bold text-white">
+            <ClipboardCheck size={12} aria-hidden="true" /> Examen pendiente
+          </span>
+        ) : null}
       </div>
 
       <div className="flex flex-1 flex-col gap-3 p-5">
@@ -63,7 +75,11 @@ export default function CourseCard({ course, stats }) {
           <div>
             <div className="mb-1 flex items-center justify-between text-xs">
               <span className="text-ur-gray-4">
-                {started ? `${completed} de ${total} lecciones` : 'Sin iniciar'}
+                {certificate
+                  ? `Aprobado con ${certificate.score}%`
+                  : started
+                    ? `${completed} de ${total} lecciones`
+                    : 'Sin iniciar'}
               </span>
               <span
                 className={`font-bold tabular-nums ${done ? 'text-emerald-600' : 'text-ur-navy'}`}
@@ -75,15 +91,11 @@ export default function CourseCard({ course, stats }) {
           </div>
 
           <Link
-            to={`/curso/${course.slug}`}
-            className={`flex items-center justify-center gap-2 rounded-ur-sm px-4 py-2.5 text-sm font-semibold transition ${
-              done
-                ? 'border border-ur-navy text-ur-navy hover:bg-ur-navy hover:text-white'
-                : 'bg-ur-red text-white hover:bg-ur-red-dark'
-            }`}
+            to={cta.to}
+            className={`flex items-center justify-center gap-2 rounded-ur-sm px-4 py-2.5 text-sm font-semibold transition ${cta.style}`}
           >
-            <CtaIcon size={18} aria-hidden="true" />
-            {cta}
+            <cta.Icon size={18} aria-hidden="true" />
+            {cta.label}
           </Link>
         </div>
       </div>

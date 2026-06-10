@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
-import { Award, BookOpenCheck, SearchX, TrendingUp } from 'lucide-react';
+import { Award, BookOpenCheck, GraduationCap, SearchX, TrendingUp } from 'lucide-react';
 import Navbar from '../components/Navbar.jsx';
 import FilterBar from '../components/FilterBar.jsx';
 import CourseCard from '../components/CourseCard.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useProgress } from '../context/ProgressContext.jsx';
+import { useCertification } from '../context/CertificationContext.jsx';
 import { COURSES } from '../data/courses.js';
 
 /** Normaliza texto para búsqueda sin acentos (elimina diacríticos). */
@@ -21,6 +22,7 @@ const normalize = (s) =>
 export default function Dashboard() {
   const { user } = useAuth();
   const { courseStats, globalStats } = useProgress();
+  const { certificatesCount } = useCertification();
   const [filters, setFilters] = useState({ query: '', category: 'todas', type: 'todos' });
 
   const stats = globalStats();
@@ -44,14 +46,19 @@ export default function Dashboard() {
       value: stats.inProgress,
     },
     {
+      icon: BookOpenCheck,
+      label: 'Lecciones vistas',
+      value: stats.lessonsCompleted,
+    },
+    {
       icon: Award,
       label: 'Completados',
       value: stats.completed,
     },
     {
-      icon: BookOpenCheck,
-      label: 'Lecciones vistas',
-      value: stats.lessonsCompleted,
+      icon: GraduationCap,
+      label: 'Certificados',
+      value: certificatesCount(),
     },
   ];
 
@@ -83,7 +90,7 @@ export default function Dashboard() {
               </p>
             </div>
 
-            <dl className="grid shrink-0 grid-cols-3 gap-3 sm:gap-4">
+            <dl className="grid shrink-0 grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
               {summary.map(({ icon: Icon, label, value }) => (
                 <div
                   key={label}
