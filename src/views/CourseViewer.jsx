@@ -10,6 +10,7 @@ import {
   ClipboardCheck,
   Clock,
   ListChecks,
+  Lock,
   X,
 } from 'lucide-react';
 import Navbar from '../components/Navbar.jsx';
@@ -98,18 +99,35 @@ export default function CourseViewer() {
     );
   };
 
+  /** Marca una lección como completada (sin alternar) y notifica el avance. */
+  const completeLesson = (lessonId, lessonTitle) => {
+    if (isLessonCompleted(lessonId)) return;
+    toggleLesson(lessonId);
+    const justFinishedCourse = stats.completed + 1 === stats.total;
+    toast({
+      title: justFinishedCourse ? '¡Felicitaciones! 🎓' : 'Lección completada',
+      message: justFinishedCourse
+        ? `Completaste el 100% de "${course.title}". Ya puedes presentar el examen final.`
+        : lessonTitle,
+    });
+  };
+
   const handleToggleComplete = () => {
-    toggleLesson(activeLesson.id);
-    if (!isCompleted) {
-      const justFinishedCourse = stats.completed + 1 === stats.total;
-      toast({
-        title: justFinishedCourse ? '¡Felicitaciones! 🎓' : 'Lección completada',
-        message: justFinishedCourse
-          ? `Completaste el 100% de "${course.title}".`
-          : activeLesson.title,
-      });
+    if (isCompleted) {
+      toggleLesson(activeLesson.id);
+    } else {
+      completeLesson(activeLesson.id, activeLesson.title);
     }
   };
+
+  /** "Siguiente" completa la lección actual y avanza (estilo Udemy). */
+  const goToNext = () => {
+    if (!nextLesson) return;
+    completeLesson(activeLesson.id, activeLesson.title);
+    selectLesson(nextLesson.id);
+  };
+
+  const certificate = getCertificate(course.slug);
 
   const sidebarContent = (
     <>
@@ -141,6 +159,53 @@ export default function CourseViewer() {
           onToggleModule={toggleModule}
           onSelectLesson={selectLesson}
         />
+
+        {/* Examen final: siempre visible en el índice, con su estado */}
+        <div className="mt-2">
+          {certificate ? (
+            <Link
+              to={`/certificado/${course.slug}`}
+              className="flex items-center gap-3 rounded-ur-sm border border-emerald-300 bg-emerald-50 px-4 py-3 transition hover:bg-emerald-100"
+            >
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-emerald-500 text-white">
+                <Award size={15} aria-hidden="true" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold text-emerald-800">
+                  Examen aprobado ({certificate.score}%)
+                </span>
+                <span className="text-xs text-emerald-700">Ver mi certificado</span>
+              </span>
+            </Link>
+          ) : stats.percent === 100 ? (
+            <Link
+              to={`/curso/${course.slug}/examen`}
+              className="flex items-center gap-3 rounded-ur-sm border-2 border-ur-red bg-ur-red-light/60 px-4 py-3 transition hover:bg-ur-red-light"
+            >
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-ur-red text-white">
+                <ClipboardCheck size={15} aria-hidden="true" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-bold text-ur-red-dark">
+                  Examen final disponible
+                </span>
+                <span className="text-xs text-ur-gray-4">Preséntalo y obtén tu certificado</span>
+              </span>
+            </Link>
+          ) : (
+            <div className="flex items-center gap-3 rounded-ur-sm border border-dashed border-ur-gray-2 bg-white px-4 py-3">
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-ur-gray-1 text-ur-gray-3">
+                <Lock size={14} aria-hidden="true" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold text-ur-gray-4">Examen final</span>
+                <span className="text-xs text-ur-gray-3">
+                  Se desbloquea al completar el 100% ({stats.completed}/{stats.total})
+                </span>
+              </span>
+            </div>
+          )}
+        </div>
       </div>
     </>
   );
@@ -256,7 +321,11 @@ export default function CourseViewer() {
             </div>
           </header>
 
-          <VideoPlayer src={activeLesson.videoUrl} title={activeLesson.title} />
+          <VideoPlayer
+            src={activeLesson.videoUrl}
+            title={activeLesson.title}
+            onEnded={() => completeLesson(activeLesson.id, activeLesson.title)}
+          />
 
           {/* Acciones de la lección */}
           <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -293,10 +362,11 @@ export default function CourseViewer() {
               <button
                 type="button"
                 disabled={!nextLesson}
-                onClick={() => nextLesson && selectLesson(nextLesson.id)}
+                onClick={goToNext}
+                title="Completa esta lección y avanza a la siguiente"
                 className="flex items-center gap-1.5 rounded-ur-sm bg-ur-navy px-4 py-2.5 text-sm font-semibold text-white transition enabled:hover:bg-ur-navy-light disabled:opacity-40"
               >
-                Siguiente <ChevronRight size={16} aria-hidden="true" />
+                Completar y seguir <ChevronRight size={16} aria-hidden="true" />
               </button>
             </div>
           </div>

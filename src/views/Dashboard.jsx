@@ -1,8 +1,18 @@
 import { useMemo, useState } from 'react';
-import { Award, BookOpenCheck, GraduationCap, SearchX, TrendingUp } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import {
+  Award,
+  BookOpenCheck,
+  ClipboardCheck,
+  GraduationCap,
+  PlayCircle,
+  SearchX,
+  TrendingUp,
+} from 'lucide-react';
 import Navbar from '../components/Navbar.jsx';
 import FilterBar from '../components/FilterBar.jsx';
 import CourseCard from '../components/CourseCard.jsx';
+import ProgressBar from '../components/ProgressBar.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useProgress } from '../context/ProgressContext.jsx';
 import { useCertification } from '../context/CertificationContext.jsx';
@@ -22,11 +32,18 @@ const normalize = (s) =>
 export default function Dashboard() {
   const { user } = useAuth();
   const { courseStats, globalStats } = useProgress();
-  const { certificatesCount } = useCertification();
+  const { certificatesCount, getCertificate } = useCertification();
   const [filters, setFilters] = useState({ query: '', category: 'todas', type: 'todos' });
 
   const stats = globalStats();
   const firstName = user?.fullName?.split(' ')[0] ?? 'Estudiante';
+
+  // Mi aprendizaje: programas iniciados y completados
+  const perCourse = COURSES.map((course) => ({ course, stats: courseStats(course) }));
+  const inProgressCourses = perCourse
+    .filter(({ stats: s }) => s.percent > 0 && s.percent < 100)
+    .sort((a, b) => b.stats.percent - a.stats.percent);
+  const completedCourses = perCourse.filter(({ stats: s }) => s.percent === 100);
 
   const visibleCourses = useMemo(() => {
     const q = normalize(filters.query.trim());
@@ -107,8 +124,107 @@ export default function Dashboard() {
           </div>
         </section>
 
+        {/* ── Mi aprendizaje: continuar donde quedé ───────────── */}
+        {inProgressCourses.length > 0 && (
+          <section aria-label="Continuar aprendiendo" className="mt-8">
+            <h2 className="flex items-center gap-2 text-lg font-extrabold text-ur-navy">
+              <PlayCircle size={20} aria-hidden="true" /> Continuar aprendiendo
+            </h2>
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {inProgressCourses.map(({ course, stats: s }) => (
+                <Link
+                  key={course.code}
+                  to={`/curso/${course.slug}`}
+                  className="group flex gap-4 rounded-ur-md border border-ur-gray-2 bg-white p-4 shadow-ur-sm transition hover:-translate-y-0.5 hover:border-ur-navy hover:shadow-ur-md"
+                >
+                  <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-ur-sm bg-gradient-to-br from-ur-navy to-ur-navy-light">
+                    <img
+                      src={course.coverImage}
+                      alt=""
+                      loading="lazy"
+                      className="h-full w-full object-cover"
+                      onError={(e) => (e.currentTarget.style.display = 'none')}
+                    />
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col justify-between py-0.5">
+                    <p className="line-clamp-2 text-sm font-bold leading-snug text-ur-text transition group-hover:text-ur-navy">
+                      {course.title}
+                    </p>
+                    <div>
+                      <div className="mb-1 flex justify-between text-xs">
+                        <span className="text-ur-gray-4">
+                          {s.completed}/{s.total} lecciones
+                        </span>
+                        <span className="font-bold tabular-nums text-ur-navy">{s.percent}%</span>
+                      </div>
+                      <ProgressBar percent={s.percent} size="sm" />
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ── Mi aprendizaje: completados y certificados ──────── */}
+        {completedCourses.length > 0 && (
+          <section aria-label="Programas completados" className="mt-8">
+            <h2 className="flex items-center gap-2 text-lg font-extrabold text-ur-navy">
+              <GraduationCap size={20} aria-hidden="true" /> Completados y certificados
+            </h2>
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {completedCourses.map(({ course }) => {
+                const cert = getCertificate(course.slug);
+                return (
+                  <div
+                    key={course.code}
+                    className={`flex items-center gap-4 rounded-ur-md border bg-white p-4 shadow-ur-sm ${
+                      cert ? 'border-emerald-300' : 'border-ur-gray-2'
+                    }`}
+                  >
+                    <span
+                      className={`grid h-12 w-12 shrink-0 place-items-center rounded-full ${
+                        cert ? 'bg-emerald-100 text-emerald-600' : 'bg-ur-red-light text-ur-red'
+                      }`}
+                    >
+                      {cert ? (
+                        <Award size={22} aria-hidden="true" />
+                      ) : (
+                        <ClipboardCheck size={22} aria-hidden="true" />
+                      )}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="line-clamp-2 text-sm font-bold leading-snug text-ur-text">
+                        {course.title}
+                      </p>
+                      <p className="mt-0.5 text-xs text-ur-gray-4">
+                        {cert
+                          ? `Certificado ${cert.code} · nota ${cert.score}%`
+                          : '100% de lecciones · examen final pendiente'}
+                      </p>
+                    </div>
+                    <Link
+                      to={cert ? `/certificado/${course.slug}` : `/curso/${course.slug}/examen`}
+                      className={`shrink-0 rounded-ur-sm px-4 py-2 text-xs font-bold transition ${
+                        cert
+                          ? 'border border-emerald-600 text-emerald-700 hover:bg-emerald-600 hover:text-white'
+                          : 'bg-ur-red text-white hover:bg-ur-red-dark'
+                      }`}
+                    >
+                      {cert ? 'Ver certificado' : 'Presentar examen'}
+                    </Link>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {/* Filtros */}
-        <div className="mt-8">
+        <div className="mt-10">
+          <h2 className="mb-4 text-lg font-extrabold text-ur-navy">
+            Explorar todos los programas
+          </h2>
           <FilterBar filters={filters} onChange={setFilters} />
         </div>
 

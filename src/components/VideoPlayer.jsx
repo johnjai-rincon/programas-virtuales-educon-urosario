@@ -4,7 +4,7 @@
  */
 const isEmbed = (url) => /youtube\.com|youtu\.be|vimeo\.com/.test(url ?? '');
 
-export default function VideoPlayer({ src, title }) {
+export default function VideoPlayer({ src, title, onEnded }) {
   return (
     <div className="overflow-hidden rounded-ur-md bg-ur-navy-dark shadow-ur-md">
       <div className="relative aspect-video">
@@ -23,6 +23,7 @@ export default function VideoPlayer({ src, title }) {
             controls
             preload="metadata"
             controlsList="nodownload"
+            onEnded={onEnded}
             className="absolute inset-0 h-full w-full bg-black"
           >
             <p className="p-4 text-white">
